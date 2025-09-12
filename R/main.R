@@ -11,6 +11,7 @@ source("R/src/generate_plots.R")
 source("R/src/read_data.R")
 source("R/src/plot_functions.R")
 
+Sys.setlocale("LC_TIME", "en_US.UTF-8")
 dfs <- get_data_frames()
 generate_plots(dfs)
 
@@ -310,21 +311,3 @@ grid.text(
     fontfamily = "Econ Sans Cnd"
   )
 )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

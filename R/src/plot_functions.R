@@ -18,7 +18,7 @@ get_period_str <- function() {
 get_title_and_subtitle <- function(col) {
   titles <- list(
     Place = "Countries",
-    Genre = "Genres/Themes",
+    Genre = "Genres / Themes",
     Author = "Authors",
     Books = "Reading record",
     Pages = "Reading record",
@@ -27,13 +27,13 @@ get_title_and_subtitle <- function(col) {
 
   )
   subtitles <- list(
-    Place = "Number of books by place of publication",
-    Genre = "Number of books by genre or theme",
-    Author = "Number of books by author",
-    Books = "Number of books read by year",
-    Pages = "Number of pages read by year",
-    Book_series = "Cumulated number of books read",
-    Page_series = "Cumulated number of pages read"
+    Place = "Books read by place of publication",
+    Genre = "Books read by genre or theme",
+    Author = "Books read by author",
+    Books = "Books read by year",
+    Pages = "Pages read by year",
+    Book_series = "Cumulated books read",
+    Page_series = "Cumulated pages read"
   )
 
   c(titles[[col]], subtitles[[col]])
@@ -57,7 +57,7 @@ make_grob_tree <- function(plt, bottom) {
       just = c("left", "bottom"),
       gp = gpar(
         col = "grey50",
-        fontsize = 14
+        fontsize = 10
       )
     )
     return(grobTree(ggplotGrob(plt), g_rect, g_text))
@@ -79,20 +79,32 @@ horizontal_barplot <- function(df, col) {
 
   titles <- get_title_and_subtitle(col)
 
-  barwidth <- 0.6
-  upperlimit <- max(data$count) + 20
-  steps <- 20
+  if (col == "Genre") {
+    barwidth <- 0.6
+    upperlimit <- max(data$count) + 30
+    lowerlimit <- 0
+    steps <- 40
+  }
+
+  if (col == "Place") {
+    barwidth <- 0.6
+    upperlimit <- max(data$count) + 35
+    lowerlimit <- 0
+    steps <- 20
+  }
 
   if (col == "Author") {
     barwidth <- 0.9
     upperlimit <- max(data$count) + 0.5
+    lowerlimit <- -0.8
     steps <- 1
   }
 
   plt <- ggplot(data) +
     geom_col(aes(count, name), fill = "#076fa2", width = barwidth) +
+    geom_vline(xintercept = 0) +
     scale_x_continuous(
-      limits = c(0, upperlimit),
+      limits = c(lowerlimit, upperlimit),
       breaks = seq(0, upperlimit, by = steps),
       expand = c(0, 0),
       position = "top"
@@ -103,7 +115,6 @@ horizontal_barplot <- function(df, col) {
       panel.grid.major.x = element_line(color = "#A8BAC4", linewidth = 0.3),
       axis.ticks.length = unit(0, "mm"),
       axis.title = element_blank(),
-      axis.line.y.left = element_line(color = "black"),
       axis.text.y = element_blank(),
       axis.text.x = element_text(size = 16)
     ) +
@@ -139,13 +150,14 @@ horizontal_barplot <- function(df, col) {
       )
   } else {
     plt <- plt +
-      geom_text(
-        data = data,
-        aes(0, y = name, label = name),
-        hjust = 0,
-        nudge_x = 0.3,
+      geom_shadowtext(
+        aes(count, y = name, label = name),
+        hjust = 1,
+        nudge_x = -0.1,
         colour = "white",
-        size = 3
+        bg.colour = "black",
+        bg.r = 0.2,
+        size = 2.8
       )
   }
 
@@ -171,21 +183,16 @@ vertical_barplot <- function(df, col) {
   breakstep <- ifelse(col == "Books", 10, 2000)
   ynudge <- ifelse(col == "Books", 2.5, 500)
 
-  plt <-ggplot(data) +
+  plt <- ggplot(data) +
     geom_col(aes(name, count), fill = "#076fa2", width = 0.6) +
-    scale_y_continuous(
-      limits = c(0, upperlimit),
-      breaks = seq(0, upperbreak, by = breakstep),
-      expand = c(0, 0)
-    ) +
-    scale_x_discrete() +
     theme(
       panel.background = element_rect(fill = "white"),
-      panel.grid.major.y = element_line(color = "#A8BAC4", size = 0.3),
+      panel.grid.major.x = element_blank(),
+      panel.grid.major.y = element_line(color = "#A8BAC4", linewidth = 0.3),
       axis.ticks.length = unit(0, "mm"),
       axis.title = element_blank(),
       axis.text.y = element_blank(),
-      axis.text.x = element_text(size = 16),
+      axis.text.x = element_text(size = 10, angle = 45, vjust = 1, hjust=1),
       plot.margin = margin(0.025, 0, 0.05, 0.01, "npc"),
       plot.title = element_text(
         face = "bold",
@@ -195,6 +202,12 @@ vertical_barplot <- function(df, col) {
         size = 15
       )
     ) +
+    scale_y_continuous(
+      limits = c(0, upperlimit),
+      breaks = seq(0, upperbreak, by = breakstep),
+      expand = c(0, 0)
+    ) +
+    scale_x_discrete() +
     geom_shadowtext(
       data = data,
       aes(x = name, count, label = count),
@@ -204,7 +217,7 @@ vertical_barplot <- function(df, col) {
       colour = "#076fa2",
       bg.colour = "white",
       bg.r = 0.2,
-      size = 5
+      size = 3.5
     ) +
     labs(
       title = titles[1],
@@ -232,32 +245,54 @@ cumulated_series <- function(df, col) {
   }
 
   vals <- df[[col]]
-  colorscale <- rev(gray((vals - min(vals)) / (max(vals) - min(vals))))
-
-  # blue_palette <- colorRampPalette(c("blue", "darkblue"))
-  # blue_scale <- blue_palette(length(vals))
+  blue_palette <- colorRampPalette(c("lightblue", "#076fa2"))
+  colorscale <- blue_palette(length(vals))
 
   titles <- get_title_and_subtitle(col)
 
   if (col == "Book_series") {
-    plt <- ggplot(df, aes(x = as.Date(Date), y = Book_series))
+    plt <- ggplot(df, aes(x = as.Date(Date), y = Book_series)) +
+      geom_segment(
+        aes(
+          x = as.Date(Date),
+          xend = as.Date(Date),
+          y = Book_series, yend = 0,
+          colour = vals),
+        inherit.aes = FALSE,
+        linewidth = 0.5,
+        alpha = 0.05)
     upperlimit <- max(df[[col]]) + 5
     breakstep <- 25
+    breaks <- c(0, 100, 200, 300)
   }
   if (col == "Page_series") {
-    plt <- ggplot(df, aes(x = as.Date(Date), y = Page_series))
+    plt <- ggplot(df, aes(x = as.Date(Date), y = Page_series)) +
+      geom_segment(
+        aes(
+          x = as.Date(Date),
+          xend = as.Date(Date),
+          y = Page_series, yend = 0,
+          colour = vals),
+        inherit.aes = FALSE,
+        linewidth = 0.5,
+        alpha = 0.05)
     upperlimit <- max(df[[col]]) + 2000
     breakstep <- 10000
+    breaks <- c(0, 30000, 60000, 90000)
   }
 
+  limit <- max(df[[col]])
+  first_date <- as.Date(df[["Date"]][1]) + 90
+  last_date <- as.Date(tail(df[["Date"]], 1))
+
   plt <- plt +
-    geom_segment(aes(xend = as.Date(Date), yend = 0, colour = vals),
-                 linewidth = 0.2,
-                 alpha = 0.1) +
     geom_line() +
     scale_colour_gradient(
       low = colorscale[1],
-      high = tail(colorscale, 1)) +
+      high = tail(colorscale, 1),
+      limits = c(0, limit),
+      breaks = c(breaks, limit),
+      labels = c(breaks, limit)) +
     scale_y_continuous(
       limits = c(0, upperlimit),
       breaks = seq(0, upperlimit, by = breakstep),
@@ -265,13 +300,15 @@ cumulated_series <- function(df, col) {
       position = "left"
     ) +
     scale_x_date(
-      date_breaks = "6 months",
-      date_labels = "%Y-%b"
+      breaks = c(seq.Date(first_date, last_date, by = '6 months')),
+      date_labels = "%Y-%b",
+      expand = c(0,0)
     ) +
     labs(
       y = element_blank(),
       title = titles[1],
-      subtitle = titles[2]
+      subtitle = titles[2],
+      colour = NULL
     ) +
     theme(
       plot.margin = margin(0.025, 0, 0.01, 0.01, "npc"),
@@ -282,8 +319,12 @@ cumulated_series <- function(df, col) {
       plot.subtitle = element_text(
         size = 15
       ),
-      axis.text.x = element_text(angle = 45, vjust = 1, hjust=1),
-      axis.title.x = element_blank())
+      axis.text.x = element_text(size = 8, angle = 45, vjust = 1, hjust=1),
+      axis.title.x = element_blank(),
+      legend.position = "bottom") +
+    guides(colour = guide_colourbar(
+      barwidth = unit(10, "cm"))
+    )
 
   make_grob_tree(plt, bottom = FALSE)
 }
